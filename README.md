@@ -1,4 +1,4 @@
-### Cookie Override browser extension
+## &nbsp;![Cookie Override icon](icons/cookie-override-24.png) Cookie Override browser extension
 
 The extension allows to add rules overriding specific cookie values whenever
 a website producing the cookie is visited. This allows, for example, to persist
