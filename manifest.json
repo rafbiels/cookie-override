@@ -1,0 +1,29 @@
+{
+
+  "manifest_version": 2,
+  "name": "Cookie Override",
+  "version": "1.0",
+
+  "description": "Allows to add rules overriding specific cookie values whenever a cookie is created or updated.",
+  "icons": {
+    "48": "icons/cookie-override-48.png",
+    "96": "icons/cookie-override-96.png"
+  },
+
+  "permissions": [
+      "tabs",
+      "cookies",
+      "<all_urls>"
+  ],
+
+  "background": {
+    "scripts": ["background_scripts/background.js"]
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content_scripts/content.js"]
+    }
+  ]
+}
