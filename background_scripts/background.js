@@ -1,8 +1,8 @@
 // Hard-coded rules for initial testing
-var rules = [
-  {domain:"ecosia.org", name:"ECFG", multiValueSeparator:":", subnames:["mc"], values:["en-gb"]},
-  {domain:"youtube.com", name:"PREF", multiValueSeparator:"&", subnames:["hl", "gl"], values:["en-GB", "PL"]}
-]
+// var rules = [
+//   {domain:"ecosia.org", name:"ECFG", multiValueSeparator:":", subnames:["mc"], values:["en-gb"]},
+//   {domain:"youtube.com", name:"PREF", multiValueSeparator:"&", subnames:["hl", "gl"], values:["en-GB", "PL"]}
+// ]
 
 function cookiePrintName(cookie) {
   return cookie.name + " (" + cookie.domain + ")";
@@ -12,7 +12,7 @@ function getActiveTab() {
   return browser.tabs.query({active: true, currentWindow: true});
 }
 
-function getNewCookies(currentUrl, cookieArray) {
+function getNewCookies(currentUrl, cookieArray, rules) {
   let cookiesToSet = [];
   for (ck of cookieArray) {
     // Consider only cookies for the domain in current URL
@@ -95,7 +95,7 @@ function setCookies(currentUrl, currentTabId, cookieArray) {
   }
 }
 
-function cookieOverride() {
+function applyRules(rules) {
   getActiveTab()
   .then((tabs) => {
     let currentUrl = tabs[0].url;
@@ -114,7 +114,7 @@ function cookieOverride() {
     browser.cookies.getAll({})
     .then((ca) => {
       let cookiesArray = ca;
-      cookiesToSet = getNewCookies(currentUrl, cookiesArray);
+      cookiesToSet = getNewCookies(currentUrl, cookiesArray, rules);
       setCookies(currentUrl, currentTabId, cookiesToSet);
     })
     .catch((err) => {
@@ -123,6 +123,22 @@ function cookieOverride() {
   })
   .catch((err) => {
     console.warn("Could not determine URL of the current active tab, cookie override not possible. " + err);
+  });
+}
+
+function cookieOverride() {
+  browser.storage.sync.get("rulesJSON")
+  .then((result) => {
+    console.log(result);
+    rules=[];
+    for (let rule of result["rulesJSON"]) {
+      rules.push(JSON.parse(rule));
+    }
+    console.log(rules);
+    applyRules(rules);
+  })
+  .catch((err) => {
+    console.warn("Could not retrieve extension settings, cookie override not possible. " + err);
   });
 }
 

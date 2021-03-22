@@ -13,6 +13,7 @@
   "permissions": [
       "tabs",
       "cookies",
+      "storage",
       "<all_urls>"
   ],
 
@@ -20,10 +21,14 @@
     "scripts": ["background_scripts/background.js"]
   },
 
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content_scripts/content.js"]
+  "options_ui": {
+    "page": "options/options.html"
+  },
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "cookie-override@rafbiels"
     }
-  ]
+  }
+  
 }

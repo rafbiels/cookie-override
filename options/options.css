@@ -1,0 +1,7 @@
+#rules-table td {
+  text-align: center;
+}
+
+#rules-table-add input[type="text"] {
+  width: 50%;
+}
