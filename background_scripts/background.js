@@ -14,11 +14,11 @@ function getActiveTab() {
 
 function getNewCookies(currentUrl, cookieArray, rules) {
   let cookiesToSet = [];
-  for (ck of cookieArray) {
+  for (let ck of cookieArray) {
     // Consider only cookies for the domain in current URL
     if (!currentUrl.includes(ck.domain.substring(1))) continue;
 
-    for (rule of rules) {
+    for (let rule of rules) {
       // Match rules to cookies by name and domain
       if (!ck.domain.includes(rule.domain)) continue;
       if (!ck.name.includes(rule.name)) continue;
@@ -27,7 +27,7 @@ function getNewCookies(currentUrl, cookieArray, rules) {
       if (rule.multiValueSeparator) { // multi-value cookie rule
         let allValues = ck.value.split(rule.multiValueSeparator);
         let allValuesObj = {};
-        for (subValueString of allValues) {
+        for (let subValueString of allValues) {
           let subValueStringSplit = subValueString.split('=');
           Object.defineProperty(allValuesObj,
                                 subValueStringSplit[0],
@@ -61,8 +61,8 @@ function getNewCookies(currentUrl, cookieArray, rules) {
 }
 
 function setCookies(currentUrl, currentTabId, cookieArray) {
-  for (ck of cookieArray) {
-    details = {
+  for (let ck of cookieArray) {
+    let details = {
       domain: ck.domain,
       name: ck.name,
       value: ck.value,
@@ -103,7 +103,7 @@ function applyRules(rules) {
 
     // Run only for pages with rules defined
     let runForCurrentUrl = false;
-    for (rule of rules) {
+    for (let rule of rules) {
       if (currentUrl.includes(rule.domain)) {
         runForCurrentUrl = true;
         break;
@@ -114,7 +114,7 @@ function applyRules(rules) {
     browser.cookies.getAll({})
     .then((ca) => {
       let cookiesArray = ca;
-      cookiesToSet = getNewCookies(currentUrl, cookiesArray, rules);
+      let cookiesToSet = getNewCookies(currentUrl, cookiesArray, rules);
       setCookies(currentUrl, currentTabId, cookiesToSet);
     })
     .catch((err) => {
@@ -130,7 +130,7 @@ function cookieOverride() {
   browser.storage.sync.get("cookieOverrideRulesData")
   .then((result) => {
     console.log(result);
-    rules=[];
+    let rules=[];
     for (let rule of result["cookieOverrideRulesData"]) {
       rules.push(JSON.parse(rule));
     }
