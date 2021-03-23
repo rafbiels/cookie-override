@@ -1,0 +1,5 @@
+# npm only used for eslint, no need to store any of this in repo
+.eslintrc*
+node_modules/*
+package.json
+package-lock.json
