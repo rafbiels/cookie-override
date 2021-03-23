@@ -127,11 +127,11 @@ function applyRules(rules) {
 }
 
 function cookieOverride() {
-  browser.storage.sync.get("rulesJSON")
+  browser.storage.sync.get("cookieOverrideRulesData")
   .then((result) => {
     console.log(result);
     rules=[];
-    for (let rule of result["rulesJSON"]) {
+    for (let rule of result["cookieOverrideRulesData"]) {
       rules.push(JSON.parse(rule));
     }
     console.log(rules);
