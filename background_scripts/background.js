@@ -21,7 +21,7 @@ function getNewCookies(currentUrl, cookieArray, rules) {
     for (let rule of rules) {
       // Match rules to cookies by name and domain
       if (!ck.domain.includes(rule.domain)) continue;
-      if (!ck.name.includes(rule.name)) continue;
+      if (ck.name != rule.name) continue;
 
       let newValue = ""
       if (rule.multiValueSeparator) { // multi-value cookie rule
