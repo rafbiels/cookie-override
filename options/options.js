@@ -5,7 +5,7 @@
 //   {domain:"github.com", name:"tz", multiValueSeparator:"", subnames:[], values:["America/Montreal"]}
 // ];
 
-const cookieOverrideDebugModeEnabled = true;
+const cookieOverrideDebugModeEnabled = false;
 
 /**
  * Common elements between Rule and RuleForStorage
@@ -17,9 +17,14 @@ class RuleBase {
     this.multiValueSeparator = "";
   }
 
-  sameAs(otherRule) {
+  sameDomainAndName(otherRule) {
     if (otherRule.domain != this.domain) return false;
     if (otherRule.name != this.name) return false;
+    return true;
+  }
+
+  sameAs(otherRule) {
+    if (!this.sameDomainAndName(otherRule)) return false;
     if (otherRule.multiValueSeparator != this.multiValueSeparator) return false;
     return true;
   }
@@ -66,15 +71,21 @@ class RuleForStorage extends RuleBase {
   }
 
   sameAs(otherRule) {
+    debug("sameAs called for " + JSON.stringify(this) + " and " + JSON.stringify(otherRule));
     if (!super.sameAs(otherRule)) return false;
+    debug("sameAs: base is the same");
     if (otherRule.subnames.length != this.subnames.length) return false;
+    debug("sameAs: subnames length is the same");
     if (otherRule.values.length != this.values.length) return false;
+    debug("sameAs: values length is the same");
     for (let subname of this.subnames) {
-      if (!(subname in otherRule.subnames)) return false;
+      if (otherRule.subnames.indexOf(subname)==-1) return false;
     }
+    debug("sameAs: subnames are the same");
     for (let value of this.values) {
-      if (!(value in otherRule.values)) return false;
+      if (otherRule.values.indexOf(value)==-1) return false;
     }
+    debug("sameAs: values are the same");
     return true;
   }
 
@@ -135,7 +146,7 @@ class RuleForStorage extends RuleBase {
       }
       else {
         debug("Conflicting values for the same subname " + otherRule.subnames[indexThere]);
-        throw new Error("Conflicting values for the same subname");
+        throw new Error("Conflicting values for the same rule");
       }
     }
     debug("mergeWith after merge this = " + JSON.stringify(this));
@@ -183,7 +194,7 @@ function reportError(message) {
 
 /**
  * Convert RuleFromStorage array to Rule array
- * @param {RuleForStorage[]} rulesFS 
+ * @param {RuleForStorage[]} rulesFS
  * @returns {Rule[]}
  */
 function convertFromStorage(rulesFS) {
@@ -210,7 +221,14 @@ function convertForStorage(rules) {
     let merged = false;
     let rule1FS = RuleForStorage.fromRule(rule1);
     for (let rule2FS of mergedRules) {
-      if (rule2FS.sameBaseAs(rule1FS)) {
+      if (rule2FS.sameDomainAndName(rule1FS)) {
+        if (rule2FS.sameAs(rule1FS)) {
+          throw new Error("Duplicate rule");
+        }
+        if (rule2FS.multiValueSeparator != rule1FS.multiValueSeparator) {
+          throw new Error("Cannot define rules for the same domain and name " +
+                          "with different separators");
+        }
         rule2FS.mergeWith(rule1FS);
         merged = true;
       }
@@ -225,7 +243,7 @@ function convertForStorage(rules) {
 
 /**
  * Generate DOM table row representing a Rule
- * @param {Rule} rule 
+ * @param {Rule} rule
  * @returns {Element}
  */
 function ruleToRow(rule) {
@@ -266,7 +284,8 @@ function ruleToRow(rule) {
 /**
  * Retrieve the rules from browser storage and execute the callback.
  * The callback should take Rule array as argument.
- * @param {function} callback 
+ * @param {function} callback
+ * @returns {Promise}
  */
 function getRules(callback) {
   debug("getRules called");
@@ -286,22 +305,22 @@ function getRules(callback) {
     let rules = convertFromStorage(rulesFS);
     // debug(" check1 ");
     debug("getRules rules="+JSON.stringify(rules));
-    callback(rules);
-  }
-
-  function onError(error) {
-    debug("error");
-    debug(error);
+    try {
+      callback(rules);
+    }
+    catch(error) {
+      return Promise.reject(error.message);
+    }
   }
 
   return browser.storage.sync.get("cookieOverrideRulesData")
-  .then(onSuccess, onError)
+  .then(onSuccess)
   .catch(reportError);
 }
 
 /**
  * Convert and save Rule array into the browser storage.
- * @param {Rule[]} rules 
+ * @param {Rule[]} rules
  * @returns {Promise}
  */
 function saveRules(rules) {
@@ -324,7 +343,7 @@ function saveRules(rules) {
 
 /**
  * Clear the rules table and repopulate using the passed Rule array.
- * @param {Rule[]} rules 
+ * @param {Rule[]} rules
  */
 function updateTable(rules) {
   debug("updateTable called");
@@ -334,7 +353,7 @@ function updateTable(rules) {
 
   // Clear the table
   table.querySelectorAll("tr").forEach(
-    function(currentValue, currentIndex, listObj) {
+    function(currentValue) {
       if (currentValue.id == "rules-table-header") return;
       if (currentValue.id == "rules-table-add") return;
       currentValue.remove();
@@ -354,14 +373,14 @@ function updateTable(rules) {
  * Load rules from browser storage and call updateTable
  */
 function updateTableWrapper() {
-  debug(" ");
-  getRules(updateTable);
+  getRules(updateTable).catch(reportError);
 }
 
 /**
  * Read the rule addition form, append to existing rules and save them
  * to browser storage.
  * @param {Rule[]} rules current rules before the addition
+ * @returns {Promise}
  */
 function addRule(rules) {
   debug("addRule called");
@@ -381,18 +400,18 @@ function addRule(rules) {
 
   if (getInput(addRow, 'col-multivalue').checked) {
     rule.multiValueSeparator = getInput(addRow, 'col-separator').value;
-    if (!rule.name) throw new Error("Cannot add multivalue rule with empty separator");
+    if (!rule.multiValueSeparator) throw new Error("Cannot add multivalue rule with empty separator");
     rule.subname = getInput(addRow, 'col-subname').value;
-    if (!rule.name) throw new Error("Cannot add multivalue rule with empty subvalue name");
+    if (!rule.subname) throw new Error("Cannot add multivalue rule with empty subvalue name");
   }
   rule.value = getInput(addRow, 'col-value').value;
-  if (!rule.name) throw new Error("Cannot add rule with empty value");
+  // if (!rule.value) throw new Error("Cannot add rule with empty value");
 
   debug("rule="+JSON.stringify(rule));
 
   rules.push(rule);
-  saveRules(rules).then(() => {updateTable(rules)})
-  .catch( (err) => { debug(err);});
+  return saveRules(rules).then(() => {updateTableWrapper()})
+  .catch(reportError);
 }
 
 /**
@@ -400,12 +419,13 @@ function addRule(rules) {
  */
 function addRuleWrapper() {
   clearError();
-  getRules(addRule);
+  getRules(addRule).catch(reportError);
 }
 
 /**
  * Remove the rule represented by the table row where the remove button was clicked
  * @param {Rule[]} rules current rules before the removal
+ * @returns {Promise}
  */
 function removeRule(rules) {
   debug("removeRule called");
@@ -427,7 +447,7 @@ function removeRule(rules) {
   }
 
   document.querySelectorAll('.clicked-remove-button').forEach(
-    function(currentValue, currentIndex, listObj) {
+    function(currentValue) {
       let rowToRemove = currentValue.parentNode.parentNode;
       debug("@@@ Removing row " + rowToRemove.innerText);
       let rule = new Rule();
@@ -441,20 +461,20 @@ function removeRule(rules) {
     }
   );
 
-  saveRules(rules).then(() => {updateTable(rules)})
-  .catch( (err) => { debug(err);});
+  return saveRules(rules).then(() => {updateTableWrapper()})
+  .catch(reportError);
 }
 
 /**
  * Event handler for clicked remove button.
  * Loads rules from browser storage and calls removeRule.
- * @param {Event} evt 
+ * @param {Event} evt
  */
 function removeRuleWrapper(evt) {
   clearError();
   let clickedButton = evt.target;
   clickedButton.setAttribute("class", clickedButton.getAttribute + " clicked-remove-button");
-  getRules(removeRule);
+  getRules(removeRule).catch(reportError);
 }
 
 /**
@@ -465,8 +485,28 @@ function removeAll() {
   saveRules(rules).then(() => {updateTable(rules)});
 }
 
+function checkboxHandler(evt) {
+  let checkbox = evt.target;
+  let row = checkbox.parentNode.parentNode;
+  let separatorInput = row.querySelector(".col-separator input[type=text]");
+  let subnameInput = row.querySelector(".col-subname input[type=text]");
+  if (checkbox.checked) {
+    debug("checkbox checked");
+    separatorInput.toggleAttribute("disabled", false);
+    subnameInput.toggleAttribute("disabled", false);
+  }
+  else {
+    debug("checkbox unchecked");
+    separatorInput.value = "";
+    separatorInput.toggleAttribute("disabled", true);
+    subnameInput.value = "";
+    subnameInput.toggleAttribute("disabled", true);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", updateTableWrapper);
 document.querySelector("#add-rule-button").addEventListener("click", addRuleWrapper);
 // document.querySelector("#remove-all-button").addEventListener("click", removeAll);
 // document.querySelector("#refresh-button").addEventListener("click", updateTableWrapper);
-document.querySelector("#clear-error-button").addEventListener("click", clearError);
+// document.querySelector("#clear-error-button").addEventListener("click", clearError);
+document.querySelector(".col-multivalue input[type=checkbox]").addEventListener("change", checkboxHandler);

@@ -40,6 +40,10 @@ input[type="button"]:active {
   transition: background-color .2s, border-color .2s;
 }
 
+input[type="text"]:disabled {
+  background-color: #fdfdfd;
+  border-color: #eeeeee;
+}
 
 #add-rule-button, .remove-button {
   width: 3ex;
