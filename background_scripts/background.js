@@ -1,6 +1,9 @@
 /** Debug info flag, enable for development, disable for deployment */
 const cookieOverrideDebugModeEnabled = false;
 
+/** List of recently processed URLs used to prevent infinite looping */
+var blockedUrls = [];
+
 /**
  * Call console.log(obj) if debug flag is enabled
  * @param {any} obj
@@ -23,6 +26,34 @@ function cookiePrintName(cookie) {
  */
 function getActiveTab() {
   return browser.tabs.query({active: true, currentWindow: true});
+}
+
+/**
+ * @param {string} url 
+ * @returns {boolean} true if url is in the blockedUrls array
+ */
+function urlBlocked(url) {
+  consoleDebug("Checking if url is blocked: " + url);
+  if (blockedUrls.indexOf(url) >= 0) return true;
+  return false;
+}
+
+/**
+ * Add url to the blockedUrls array for the given amount of time.
+ * Used to prevent infinite looping on recently processed url.
+ * @param {string} url 
+ * @param {number} milliseconds
+ */
+function blockUrlFor(url, milliseconds) {
+  if (urlBlocked(url)) return;
+  consoleDebug("Blocking URL " + url + " for " + milliseconds + " ms");
+  blockedUrls.push(url);
+  window.setTimeout(function(){
+    let index = blockedUrls.indexOf(url);
+    if (index>=0) {
+      blockedUrls.splice(index, 1);
+    }
+  }, milliseconds);
 }
 
 /**
@@ -111,6 +142,7 @@ function setCookies(currentUrl, currentTabId, cookieArray) {
       browser.cookies.set(details)
       .then( (setCookie) => {
         consoleDebug("Cookie " + cookiePrintName(setCookie) + " updated successfully");
+        blockUrlFor(currentUrl, 5000);
       })
       .catch( (err) => {
         console.error("Failed to set cookie. " + err);
@@ -144,6 +176,8 @@ function applyRules(rules) {
         break;
       }
     }
+    consoleDebug("blockedUrls = " + JSON.stringify(blockedUrls));
+    if (urlBlocked(currentUrl)) runForCurrentUrl = false;
     if (!runForCurrentUrl) return;
 
     browser.cookies.getAll({})
@@ -167,7 +201,6 @@ function applyRules(rules) {
 function cookieOverride() {
   browser.storage.sync.get("cookieOverrideRulesData")
   .then((result) => {
-    consoleDebug(result);
     let rules=[];
     for (let rule of result["cookieOverrideRulesData"]) {
       rules.push(JSON.parse(rule));
