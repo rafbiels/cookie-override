@@ -5,3 +5,31 @@
 #rules-table-add input[type="text"] {
   width: 60%;
 }
+
+input[type="button"], input[type="text"] {
+  border: 1px solid #cccccc;
+  background-color: #fafafa;
+  color: #666666;
+  border-radius: 0.5ex;
+  height: 3ex;
+  text-align: center;
+}
+
+input[type="button"]:hover, input[type="text"]:hover, input[type="text"]:focus {
+  background-color: #eeeeee;
+  border-color: #999999;
+  color: #000000;
+  transition: background-color .2s, border-color .2s, color .2s;
+}
+
+input[type="button"]:active {
+  background-color: #dddddd;
+  border-color: #888888;
+  transition: background-color .2s, border-color .2s;
+}
+
+
+#add-rule-button, .remove-button {
+  width: 3ex;
+  padding: 0;
+}
