@@ -1,9 +1,21 @@
+#rules-table {
+  margin: 1em 0em;
+}
+
 #rules-table td {
   text-align: center;
 }
 
 #rules-table-add input[type="text"] {
   width: 60%;
+}
+
+#rules-table-add .col-domain input[type="text"] {
+  width: 80%;
+}
+
+#rules-table-add .col-separator input[type="text"] {
+  width: 30%;
 }
 
 input[type="button"], input[type="text"] {
@@ -32,4 +44,17 @@ input[type="button"]:active {
 #add-rule-button, .remove-button {
   width: 3ex;
   padding: 0;
+}
+
+#error-box {
+  border: 1px solid #dd8888;
+  border-radius: 0.5ex;
+  background-color: #ffcccc;
+  margin: 0.2em;
+  padding: 1em;
+  color: #880000;
+  opacity: 0;
+  display: none;
+  transition-property: opacity;
+  transition-duration: .2s;
 }

@@ -152,6 +152,35 @@ function debug(message) {
   document.querySelector("body").appendChild(document.createElement("br"));
 }
 
+function clearError() {
+  debug("clearError called");
+  let errorBox = document.querySelector("#error-box");
+  debug("clearError errorBox.style.display = " + errorBox.style.display);
+  debug("clearError errorBox.style.opacity = " + errorBox.style.opacity);
+  if (!errorBox.style.display || errorBox.style.display == "none") return;
+  errorBox.childNodes.forEach((node) => {node.remove();});
+  errorBox.style.opacity = 0;
+  errorBox.style.display = 'none';
+  debug("clearError finished");
+}
+
+function reportError(message) {
+  debug("reportError called");
+  let errorBox = document.querySelector("#error-box");
+  errorBox.style.transitionDuration = ".05s";
+  clearError();
+  debug("reportError errorBox.style.display = " + errorBox.style.display);
+  debug("reportError errorBox.style.opacity = " + errorBox.style.opacity);
+  errorBox.appendChild(document.createTextNode(message));
+  errorBox.style.display = 'block';
+  window.setTimeout(function(){
+    errorBox.style.transitionDuration = ".2s";
+    errorBox.style.display = 'block';
+    errorBox.style.opacity = 1;
+  }, 50);
+  debug("reportError finished");
+}
+
 /**
  * Convert RuleFromStorage array to Rule array
  * @param {RuleForStorage[]} rulesFS 
@@ -265,7 +294,9 @@ function getRules(callback) {
     debug(error);
   }
 
-  browser.storage.sync.get("cookieOverrideRulesData").then(onSuccess, onError);
+  return browser.storage.sync.get("cookieOverrideRulesData")
+  .then(onSuccess, onError)
+  .catch(reportError);
 }
 
 /**
@@ -343,12 +374,19 @@ function addRule(rules) {
   }
 
   rule.domain = getInput(addRow, 'col-domain').value;
+  if (!rule.domain) throw new Error("Cannot add rule with empty domain");
+
   rule.name = getInput(addRow, 'col-name').value;
+  if (!rule.name) throw new Error("Cannot add rule with empty name");
+
   if (getInput(addRow, 'col-multivalue').checked) {
     rule.multiValueSeparator = getInput(addRow, 'col-separator').value;
+    if (!rule.name) throw new Error("Cannot add multivalue rule with empty separator");
     rule.subname = getInput(addRow, 'col-subname').value;
+    if (!rule.name) throw new Error("Cannot add multivalue rule with empty subvalue name");
   }
   rule.value = getInput(addRow, 'col-value').value;
+  if (!rule.name) throw new Error("Cannot add rule with empty value");
 
   debug("rule="+JSON.stringify(rule));
 
@@ -361,6 +399,7 @@ function addRule(rules) {
  * Load rules from browser storage and call addRule
  */
 function addRuleWrapper() {
+  clearError();
   getRules(addRule);
 }
 
@@ -375,7 +414,7 @@ function removeRule(rules) {
     return parent.querySelector('.'+className).innerText;
   }
 
-  function removeRule(rules, ruleToRemove) {
+  function removeRuleFromArray(rules, ruleToRemove) {
     let index = -1;
     for (let i=0; i<rules.length; ++i) {
       if (rules[i].sameAs(ruleToRemove)) {
@@ -398,7 +437,7 @@ function removeRule(rules) {
       rule.subname = getText(rowToRemove, "col-subname");
       rule.value = getText(rowToRemove, "col-value");
       debug("@@@ Rule to remove = " + JSON.stringify(rule));
-      removeRule(rules, rule);
+      removeRuleFromArray(rules, rule);
     }
   );
 
@@ -412,6 +451,7 @@ function removeRule(rules) {
  * @param {Event} evt 
  */
 function removeRuleWrapper(evt) {
+  clearError();
   let clickedButton = evt.target;
   clickedButton.setAttribute("class", clickedButton.getAttribute + " clicked-remove-button");
   getRules(removeRule);
@@ -427,5 +467,6 @@ function removeAll() {
 
 document.addEventListener("DOMContentLoaded", updateTableWrapper);
 document.querySelector("#add-rule-button").addEventListener("click", addRuleWrapper);
-document.querySelector("#remove-all-button").addEventListener("click", removeAll);
-document.querySelector("#refresh-button").addEventListener("click", updateTableWrapper);
+// document.querySelector("#remove-all-button").addEventListener("click", removeAll);
+// document.querySelector("#refresh-button").addEventListener("click", updateTableWrapper);
+document.querySelector("#clear-error-button").addEventListener("click", clearError);
