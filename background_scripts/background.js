@@ -1,17 +1,40 @@
-// Hard-coded rules for initial testing
-// var rules = [
-//   {domain:"ecosia.org", name:"ECFG", multiValueSeparator:":", subnames:["mc"], values:["en-gb"]},
-//   {domain:"youtube.com", name:"PREF", multiValueSeparator:"&", subnames:["hl", "gl"], values:["en-GB", "PL"]}
-// ]
+/** Debug info flag, enable for development, disable for deployment */
+const cookieOverrideDebugModeEnabled = false;
 
+/**
+ * Call console.log(obj) if debug flag is enabled
+ * @param {any} obj
+ */
+function consoleDebug(obj) {
+  if (!cookieOverrideDebugModeEnabled) return;
+  console.log(obj);
+}
+
+/**
+ * @param {cookies.Cookie} cookie
+ * @returns {string} Cookie identifier string for messages
+ */
 function cookiePrintName(cookie) {
   return cookie.name + " (" + cookie.domain + ")";
 }
 
+/**
+ * @returns {Promise} Promise containing tabs.Tab for active tab on fulfillment
+ */
 function getActiveTab() {
   return browser.tabs.query({active: true, currentWindow: true});
 }
 
+/**
+ * Find cookies matching any of the rules and return an array of updated
+ * cookies. Only new cookies with requested overrides are returned - cookies
+ * not matching any rules are discarded from the returned array. Only cookies
+ * whose domain matches the currentUrl are considered.
+ * @param {string} currentUrl
+ * @param {cookies.Cookie[]} cookieArray
+ * @param {RuleForStorage[]} rules
+ * @returns {cookies.Cookie[]}
+ */
 function getNewCookies(currentUrl, cookieArray, rules) {
   let cookiesToSet = [];
   for (let ck of cookieArray) {
@@ -48,10 +71,10 @@ function getNewCookies(currentUrl, cookieArray, rules) {
         newValue = rule.values[0];
       }
       if (ck.value == newValue) {
-        // console.log("Cookie " + ck.name + " already has the desired value " + ck.value);
+        consoleDebug("Cookie " + ck.name + " already has the desired value " + ck.value);
         continue;
       }
-      console.log("Change " + cookiePrintName(ck) + " value from " + ck.value + " to " + newValue);
+      consoleDebug("Change " + cookiePrintName(ck) + " value from " + ck.value + " to " + newValue);
       ck.value = newValue;
       cookiesToSet.push(ck);
     }
@@ -60,6 +83,13 @@ function getNewCookies(currentUrl, cookieArray, rules) {
   return cookiesToSet;
 }
 
+/**
+ * Write cookies from cookieArray to the browser cookie storage and reload
+ * the current tab.
+ * @param {string} currentUrl
+ * @param {number} currentTabId
+ * @param {cookies.Cookie[]} cookieArray
+ */
 function setCookies(currentUrl, currentTabId, cookieArray) {
   for (let ck of cookieArray) {
     let details = {
@@ -80,7 +110,7 @@ function setCookies(currentUrl, currentTabId, cookieArray) {
     try {
       browser.cookies.set(details)
       .then( (setCookie) => {
-        console.log("Cookie " + cookiePrintName(setCookie) + " updated successfully");
+        consoleDebug("Cookie " + cookiePrintName(setCookie) + " updated successfully");
       })
       .catch( (err) => {
         console.error("Failed to set cookie. " + err);
@@ -95,6 +125,11 @@ function setCookies(currentUrl, currentTabId, cookieArray) {
   }
 }
 
+/**
+ * Process a list of rules for the current active tab and update the cookies
+ * as requested in the rules
+ * @param {RuleForStorage[]} rules
+ */
 function applyRules(rules) {
   getActiveTab()
   .then((tabs) => {
@@ -126,15 +161,18 @@ function applyRules(rules) {
   });
 }
 
+/**
+ * Retrieve rules from browser storage of extension settings and apply them
+ */
 function cookieOverride() {
   browser.storage.sync.get("cookieOverrideRulesData")
   .then((result) => {
-    console.log(result);
+    consoleDebug(result);
     let rules=[];
     for (let rule of result["cookieOverrideRulesData"]) {
       rules.push(JSON.parse(rule));
     }
-    console.log(rules);
+    consoleDebug(rules);
     applyRules(rules);
   })
   .catch((err) => {
@@ -142,7 +180,6 @@ function cookieOverride() {
   });
 }
 
-// update when the tab is updated
+// call the main function cookieOverride when the tab is updated or activated
 browser.tabs.onUpdated.addListener(cookieOverride);
-// update when the tab is activated
 browser.tabs.onActivated.addListener(cookieOverride);

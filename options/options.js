@@ -1,10 +1,4 @@
-// Hard-coded rules for initial testing
-// var rules = [
-//   {domain:"ecosia.org", name:"ECFG", multiValueSeparator:":", subnames:["mc"], values:["en-gb"]},
-//   {domain:"youtube.com", name:"PREF", multiValueSeparator:"&", subnames:["hl", "gl"], values:["en-GB", "PL"]},
-//   {domain:"github.com", name:"tz", multiValueSeparator:"", subnames:[], values:["America/Montreal"]}
-// ];
-
+/** Debug info flag, enable for development, disable for deployment */
 const cookieOverrideDebugModeEnabled = false;
 
 /**
@@ -17,12 +11,20 @@ class RuleBase {
     this.multiValueSeparator = "";
   }
 
+  /**
+   * @param {RuleBase} otherRule
+   * @returns {boolean} true if the rules have same domain and name
+   */
   sameDomainAndName(otherRule) {
     if (otherRule.domain != this.domain) return false;
     if (otherRule.name != this.name) return false;
     return true;
   }
 
+  /**
+   * @param {RuleBase} otherRule
+   * @returns {boolean} true if the rules have same domain, name and separator
+   */
   sameAs(otherRule) {
     if (!this.sameDomainAndName(otherRule)) return false;
     if (otherRule.multiValueSeparator != this.multiValueSeparator) return false;
@@ -42,10 +44,18 @@ class Rule extends RuleBase {
     this.value = "";
   }
 
+  /**
+   * @param {RuleBase} otherRule
+   * @returns {boolean} true if the rules have same domain, name and separator
+   */
   sameBaseAs(otherRule) {
     return super.sameAs(otherRule);
   }
 
+  /**
+   * @param {Rule} otherRule
+   * @returns {boolean} true if the rules have same domain, name, separator, subname and value
+   */
   sameAs(otherRule) {
     if (!super.sameAs(otherRule)) return false;
     if (otherRule.subname != this.subname) return false;
@@ -66,33 +76,44 @@ class RuleForStorage extends RuleBase {
     this.values = [];
   }
 
+  /**
+   * @param {RuleBase} otherRule
+   * @returns {boolean} true if the rules have same domain, name and separator
+   */
   sameBaseAs(otherRule) {
     return super.sameAs(otherRule);
   }
 
+  /**
+   * @param {RuleForStorage} otherRule
+   * @returns {boolean} true if the rules have same domain, name, separator, subnames and values
+   */
   sameAs(otherRule) {
     debug("sameAs called for " + JSON.stringify(this) + " and " + JSON.stringify(otherRule));
     if (!super.sameAs(otherRule)) return false;
-    debug("sameAs: base is the same");
     if (otherRule.subnames.length != this.subnames.length) return false;
-    debug("sameAs: subnames length is the same");
     if (otherRule.values.length != this.values.length) return false;
-    debug("sameAs: values length is the same");
     for (let subname of this.subnames) {
       if (otherRule.subnames.indexOf(subname)==-1) return false;
     }
-    debug("sameAs: subnames are the same");
     for (let value of this.values) {
       if (otherRule.values.indexOf(value)==-1) return false;
     }
-    debug("sameAs: values are the same");
     return true;
   }
 
+  /**
+   * @returns {string} this object represented as a single string
+   */
   serialise() {
     return JSON.stringify(this);
   }
 
+  /**
+   * Create RuleForStorage from string representation produced by serialise()
+   * @param {string} str
+   * @returns {RuleForStorage}
+   */
   static deserialise(str) {
     let rule = new RuleForStorage();
     let data = JSON.parse(str);
@@ -102,6 +123,10 @@ class RuleForStorage extends RuleBase {
     return rule;
   }
 
+  /**
+   * Convert this RuleForStorage into a Rule array
+   * @returns {Rule[]}
+   */
   toRules() {
     let rules = [];
     for (let i=0; i<this.values.length; ++i) {
@@ -116,6 +141,11 @@ class RuleForStorage extends RuleBase {
     return rules;
   }
 
+  /**
+   * Create a RuleForStorage from Rule
+   * @param {Rule} rule
+   * @returns {RuleForStorage}
+   */
   static fromRule(rule) {
     let ruleFS = new RuleForStorage();
     ruleFS.domain = rule.domain;
@@ -126,6 +156,11 @@ class RuleForStorage extends RuleBase {
     return ruleFS;
   }
 
+  /**
+   * Merge subnames and values of other rule into this, if the rules are
+   * mergeable (have the same base)
+   * @param {RuleForStorage} otherRule
+   */
   mergeWith(otherRule) {
     debug("mergeWith called");
     debug("mergeWith before merge this = " + JSON.stringify(this));
@@ -163,25 +198,27 @@ function debug(message) {
   document.querySelector("body").appendChild(document.createElement("br"));
 }
 
+/**
+ * Clear and hide the error box
+ */
 function clearError() {
   debug("clearError called");
   let errorBox = document.querySelector("#error-box");
-  debug("clearError errorBox.style.display = " + errorBox.style.display);
-  debug("clearError errorBox.style.opacity = " + errorBox.style.opacity);
   if (!errorBox.style.display || errorBox.style.display == "none") return;
   errorBox.childNodes.forEach((node) => {node.remove();});
   errorBox.style.opacity = 0;
   errorBox.style.display = 'none';
-  debug("clearError finished");
 }
 
+/**
+ * Put the message into the error box and show it
+ * @param {string} message
+ */
 function reportError(message) {
   debug("reportError called");
   let errorBox = document.querySelector("#error-box");
   errorBox.style.transitionDuration = ".05s";
   clearError();
-  debug("reportError errorBox.style.display = " + errorBox.style.display);
-  debug("reportError errorBox.style.opacity = " + errorBox.style.opacity);
   errorBox.appendChild(document.createTextNode(message));
   errorBox.style.display = 'block';
   window.setTimeout(function(){
@@ -189,7 +226,6 @@ function reportError(message) {
     errorBox.style.display = 'block';
     errorBox.style.opacity = 1;
   }, 50);
-  debug("reportError finished");
 }
 
 /**
@@ -291,7 +327,6 @@ function getRules(callback) {
   debug("getRules called");
 
   function onSuccess(result) {
-    // debug("success");
     debug("cookieOverrideRulesData = "+JSON.stringify(result));
 
     let rulesFS = [];
@@ -301,9 +336,7 @@ function getRules(callback) {
         rulesFS.push(RuleForStorage.deserialise(ruleStr));
       }
     }
-    // debug("getRules mergedRules="+JSON.stringify(mergedRules));
     let rules = convertFromStorage(rulesFS);
-    // debug(" check1 ");
     debug("getRules rules="+JSON.stringify(rules));
     try {
       callback(rules);
@@ -405,7 +438,6 @@ function addRule(rules) {
     if (!rule.subname) throw new Error("Cannot add multivalue rule with empty subvalue name");
   }
   rule.value = getInput(addRow, 'col-value').value;
-  // if (!rule.value) throw new Error("Cannot add rule with empty value");
 
   debug("rule="+JSON.stringify(rule));
 
@@ -477,14 +509,6 @@ function removeRuleWrapper(evt) {
   getRules(removeRule).catch(reportError);
 }
 
-/**
- * Overwrites browser storage with empty array
- */
-function removeAll() {
-  let rules = [];
-  saveRules(rules).then(() => {updateTable(rules)});
-}
-
 function checkboxHandler(evt) {
   let checkbox = evt.target;
   let row = checkbox.parentNode.parentNode;
@@ -506,7 +530,4 @@ function checkboxHandler(evt) {
 
 document.addEventListener("DOMContentLoaded", updateTableWrapper);
 document.querySelector("#add-rule-button").addEventListener("click", addRuleWrapper);
-// document.querySelector("#remove-all-button").addEventListener("click", removeAll);
-// document.querySelector("#refresh-button").addEventListener("click", updateTableWrapper);
-// document.querySelector("#clear-error-button").addEventListener("click", clearError);
 document.querySelector(".col-multivalue input[type=checkbox]").addEventListener("change", checkboxHandler);
